@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  recipe-finder:
+    build: .
+    ports:
+      - "3000:80"
+    container_name: recipe-finder-app
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+    networks:
+      - recipe-network
+
+  # Optional: Add a reverse proxy
+  nginx-proxy:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx-proxy.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - recipe-finder
+    networks:
+      - recipe-network
+
+networks:
+  recipe-network:
+    driver: bridge
+
+volumes:
+  nginx-logs:
