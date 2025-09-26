@@ -14,12 +14,22 @@ pipeline {
             steps {
                 echo 'Installing Node.js and npm dependencies...'
                 sh '''
-                    # Install Node.js if not available
+                    # Check if Node.js is available
                     if ! command -v node &> /dev/null; then
-                        echo "Installing Node.js..."
-                        curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-                        sudo apt-get update
-                        sudo apt-get install -y nodejs
+                        echo "Node.js not found. Installing using nvm..."
+                        
+                        # Install nvm (Node Version Manager) for current user
+                        curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+                        
+                        # Source nvm
+                        export NVM_DIR="$HOME/.nvm"
+                        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+                        [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+                        
+                        # Install and use Node.js 20
+                        nvm install 20
+                        nvm use 20
+                        nvm alias default 20
                     fi
                     
                     # Verify installations
@@ -50,20 +60,25 @@ pipeline {
             steps {
                 echo 'Deploying application...'
                 sh '''
-                    # Install serve globally if not available
+                    # Source nvm again for this stage
+                    export NVM_DIR="$HOME/.nvm"
+                    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+                    [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+                    
+                    # Install serve locally if not available
                     if ! command -v serve &> /dev/null; then
-                        echo "Installing serve..."
-                        sudo npm install -g serve
+                        echo "Installing serve locally..."
+                        npm install -g serve
                     fi
                     
                     # Stop any existing serve process
                     echo "Stopping existing serve processes..."
-                    sudo pkill -f "serve" || true
+                    pkill -f "serve" || true
                     sleep 2
                     
                     # Start serve in background
                     echo "Starting serve on port 3000..."
-                    sudo nohup serve -s dist -l 3000 > /var/log/recipe-finder.log 2>&1 &
+                    nohup serve -s dist -l 3000 > /tmp/recipe-finder.log 2>&1 &
                     
                     # Wait for serve to start
                     sleep 10
@@ -85,7 +100,7 @@ pipeline {
         success {
             echo 'Pipeline completed successfully!'
             echo "Application is available at: http://localhost:3000"
-            echo "Logs available at: /var/log/recipe-finder.log"
+            echo "Logs available at: /tmp/recipe-finder.log"
         }
         failure {
             echo 'Pipeline failed!'
