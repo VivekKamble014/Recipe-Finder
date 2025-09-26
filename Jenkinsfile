@@ -62,7 +62,8 @@ pipeline {
                     [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
                     [ -s "$NVM_DIR/bash_completion" ] && . "$NVM_DIR/bash_completion"
                     
-                    npm run lint
+                    # Use npx to run eslint from local node_modules
+                    npx eslint .
                 '''
             }
         }
@@ -76,7 +77,8 @@ pipeline {
                     [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
                     [ -s "$NVM_DIR/bash_completion" ] && . "$NVM_DIR/bash_completion"
                     
-                    npm run build
+                    # Use npx to run vite build
+                    npx vite build
                 '''
             }
         }
