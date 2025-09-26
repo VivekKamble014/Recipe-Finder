@@ -1,11 +1,6 @@
 pipeline {
     agent any
     
-    environment {
-        DOCKER_IMAGE = 'recipe-finder'
-        DOCKER_TAG = "${BUILD_NUMBER}"
-    }
-    
     stages {
         stage('Checkout') {
             steps {
@@ -15,66 +10,69 @@ pipeline {
             }
         }
         
-        stage('Build with Docker') {
+        stage('Install Node.js and Dependencies') {
             steps {
-                echo 'Building application with Docker...'
-                script {
-                    // Use Docker from the host system
-                    sh '''
-                        # Check if Docker is available
-                        if ! command -v docker &> /dev/null; then
-                            echo "Docker not found in Jenkins container"
-                            echo "This pipeline requires Docker to be available"
-                            echo "Please ensure Docker is installed and accessible"
-                            exit 1
-                        fi
-                        
-                        # Build the Docker image
-                        docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} .
-                        
-                        # Tag as latest
-                        docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest
-                    '''
-                }
-            }
-        }
-        
-        stage('Test Docker Image') {
-            steps {
-                echo 'Testing Docker image...'
+                echo 'Installing Node.js and npm dependencies...'
                 sh '''
-                    # Run the container in test mode
-                    docker run -d --name recipe-finder-test-${BUILD_NUMBER} -p 3001:80 ${DOCKER_IMAGE}:${DOCKER_TAG}
+                    # Install Node.js if not available
+                    if ! command -v node &> /dev/null; then
+                        echo "Installing Node.js..."
+                        curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+                        sudo apt-get update
+                        sudo apt-get install -y nodejs
+                    fi
                     
-                    # Wait for container to start
-                    sleep 15
+                    # Verify installations
+                    echo "Node.js version: $(node --version)"
+                    echo "npm version: $(npm --version)"
                     
-                    # Test the application
-                    curl -f http://localhost:3001 || exit 1
-                    
-                    # Clean up test container
-                    docker stop recipe-finder-test-${BUILD_NUMBER}
-                    docker rm recipe-finder-test-${BUILD_NUMBER}
+                    # Install dependencies
+                    npm ci
                 '''
             }
         }
         
-        stage('Deploy Locally') {
+        stage('Lint Code') {
             steps {
-                echo 'Deploying application locally...'
+                echo 'Running ESLint...'
+                sh 'npm run lint'
+            }
+        }
+        
+        stage('Build Application') {
+            steps {
+                echo 'Building React application...'
+                sh 'npm run build'
+            }
+        }
+        
+        stage('Deploy Application') {
+            steps {
+                echo 'Deploying application...'
                 sh '''
-                    # Stop existing container if running
-                    docker stop recipe-finder-app || true
-                    docker rm recipe-finder-app || true
+                    # Install serve globally if not available
+                    if ! command -v serve &> /dev/null; then
+                        echo "Installing serve..."
+                        sudo npm install -g serve
+                    fi
                     
-                    # Start new container
-                    docker run -d --name recipe-finder-app -p 3000:80 ${DOCKER_IMAGE}:${DOCKER_TAG}
+                    # Stop any existing serve process
+                    echo "Stopping existing serve processes..."
+                    sudo pkill -f "serve" || true
+                    sleep 2
                     
-                    # Wait for container to be ready
-                    sleep 15
+                    # Start serve in background
+                    echo "Starting serve on port 3000..."
+                    sudo nohup serve -s dist -l 3000 > /var/log/recipe-finder.log 2>&1 &
+                    
+                    # Wait for serve to start
+                    sleep 10
                     
                     # Verify deployment
+                    echo "Verifying deployment..."
                     curl -f http://localhost:3000 || exit 1
+                    
+                    echo "Deployment successful!"
                 '''
             }
         }
@@ -83,11 +81,11 @@ pipeline {
     post {
         always {
             echo 'Cleaning up...'
-            sh 'docker image prune -f || true'
         }
         success {
             echo 'Pipeline completed successfully!'
             echo "Application is available at: http://localhost:3000"
+            echo "Logs available at: /var/log/recipe-finder.log"
         }
         failure {
             echo 'Pipeline failed!'
