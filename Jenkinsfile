@@ -1,128 +1,96 @@
 pipeline {
-    agent {
-        kubernetes {
-            yaml '''
-apiVersion: v1
-kind: Pod
-spec:
-  containers:
-  - name: sonar-scanner
-    image: sonarsource/sonar-scanner-cli
-    command:
-    - cat
-    tty: true
-  - name: kubectl
-    image: bitnami/kubectl:latest
-    command:
-    - cat
-    tty: true
-    securityContext:
-      runAsUser: 0
-      readOnlyRootFilesystem: false
-    env:
-    - name: KUBECONFIG
-      value: /kube/config        
-    volumeMounts:
-    - name: kubeconfig-secret
-      mountPath: /kube/config
-      subPath: kubeconfig
-  - name: dind
-    image: docker:dind
-    args: ["--registry-mirror=https://mirror.gcr.io", "--storage-driver=overlay2"]
-    securityContext:
-      privileged: true  # Needed to run Docker daemon
-    env:
-    - name: DOCKER_TLS_CERTDIR
-      value: ""  # Disable TLS for simplicity
-    volumeMounts:
-    - name: docker-config
-      mountPath: /etc/docker/daemon.json
-      subPath: daemon.json  # Mount the file directly here
-  volumes:
-  - name: docker-config
-    configMap:
-      name: docker-daemon-config
-  - name: kubeconfig-secret
-    secret:
-      secretName: kubeconfig-secret
-'''
+    agent any
+    
+    environment {
+        DOCKER_IMAGE = 'recipe-finder'
+        DOCKER_TAG = "${BUILD_NUMBER}"
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                echo 'Checking out code from Git...'
+                checkout scm
+                sh 'pwd && ls -la'
+            }
+        }
+        
+        stage('Build with Docker') {
+            steps {
+                echo 'Building application with Docker...'
+                script {
+                    // Use Docker from the host system
+                    sh '''
+                        # Check if Docker is available
+                        if ! command -v docker &> /dev/null; then
+                            echo "Docker not found in Jenkins container"
+                            echo "This pipeline requires Docker to be available"
+                            echo "Please ensure Docker is installed and accessible"
+                            exit 1
+                        fi
+                        
+                        # Build the Docker image
+                        docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} .
+                        
+                        # Tag as latest
+                        docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest
+                    '''
+                }
+            }
+        }
+        
+        stage('Test Docker Image') {
+            steps {
+                echo 'Testing Docker image...'
+                sh '''
+                    # Run the container in test mode
+                    docker run -d --name recipe-finder-test-${BUILD_NUMBER} -p 3001:80 ${DOCKER_IMAGE}:${DOCKER_TAG}
+                    
+                    # Wait for container to start
+                    sleep 15
+                    
+                    # Test the application
+                    curl -f http://localhost:3001 || exit 1
+                    
+                    # Clean up test container
+                    docker stop recipe-finder-test-${BUILD_NUMBER}
+                    docker rm recipe-finder-test-${BUILD_NUMBER}
+                '''
+            }
+        }
+        
+        stage('Deploy Locally') {
+            steps {
+                echo 'Deploying application locally...'
+                sh '''
+                    # Stop existing container if running
+                    docker stop recipe-finder-app || true
+                    docker rm recipe-finder-app || true
+                    
+                    # Start new container
+                    docker run -d --name recipe-finder-app -p 3000:80 ${DOCKER_IMAGE}:${DOCKER_TAG}
+                    
+                    # Wait for container to be ready
+                    sleep 15
+                    
+                    # Verify deployment
+                    curl -f http://localhost:3000 || exit 1
+                '''
+            }
         }
     }
     
-    
-    stages {
-        stage('Build Docker Image') {
-            steps {
-                container('dind') {
-                    sh '''
-                        sleep 15
-                        docker build -t recipe-finder:latest .
-                        docker image ls
-                    '''
-                }
-            }
+    post {
+        always {
+            echo 'Cleaning up...'
+            sh 'docker image prune -f || true'
         }
-
-        stage('Run Tests in Docker') {
-            steps {
-                container('dind') {
-                    sh '''
-                        docker run --rm recipe-finder:latest \
-                        npm run lint
-                    '''
-                }
-            }
+        success {
+            echo 'Pipeline completed successfully!'
+            echo "Application is available at: http://localhost:3000"
         }
-        stage('SonarQube Analysis') {
-            steps {
-                container('sonar-scanner') {
-                     withCredentials([string(credentialsId: 'sonar-token-recipe-finder', variable: 'SONAR_TOKEN')]) {
-                        sh '''
-                            sonar-scanner \
-                                -Dsonar.projectKey=recipe-finder \
-                                -Dsonar.host.url=http://my-sonarqube-sonarqube.sonarqube.svc.cluster.local:9000 \
-                                -Dsonar.login=$SONAR_TOKEN \
-                                -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
-                        '''
-                    }
-                }
-            }
-        }
-        stage('Login to Docker Registry') {
-            steps {
-                container('dind') {
-                    sh 'docker --version'
-                    sh 'sleep 10'
-                    sh 'docker login nexus-service-for-docker-hosted-registry.nexus.svc.cluster.local:8085 -u admin -p Vivek@142003'
-                }
-            }
-        }
-        stage('Build - Tag - Push') {
-            steps {
-                container('dind') {
-                    sh 'docker tag recipe-finder:latest nexus-service-for-docker-hosted-registry.nexus.svc.cluster.local:8085/recipe-finder/recipe-finder:v1'
-                    sh 'docker push nexus-service-for-docker-hosted-registry.nexus.svc.cluster.local:8085/recipe-finder/recipe-finder:v1'
-                    sh 'docker pull nexus-service-for-docker-hosted-registry.nexus.svc.cluster.local:8085/recipe-finder/recipe-finder:v1'
-                    sh 'docker image ls'
-                }
-            }
-        }
-        stage('Deploy Recipe Finder Application') {
-            steps {
-                container('kubectl') {
-                    script {
-                        dir('k8s-deployment') {
-                            sh '''
-                                # Apply all resources in deployment YAML
-                                kubectl apply -f recipe-finder-deployment.yaml
-
-                                # Wait for rollout
-                                kubectl rollout status deployment/recipe-finder-deployment -n recipe-finder
-                            '''
-                        }
-                    }
-                }
-            }
+        failure {
+            echo 'Pipeline failed!'
         }
     }
 }
