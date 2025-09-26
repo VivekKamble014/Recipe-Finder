@@ -1,0 +1,75 @@
+pipeline {
+    agent any
+    
+    environment {
+        DOCKER_IMAGE = 'recipe-finder'
+        DOCKER_TAG = "${BUILD_NUMBER}"
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                echo 'Checking out code...'
+                checkout scm
+            }
+        }
+        
+        stage('Build and Test with Docker') {
+            steps {
+                echo 'Building and testing with Docker...'
+                script {
+                    // Build the application using Docker
+                    sh '''
+                        # Build the Docker image
+                        docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} .
+                        
+                        # Test the image
+                        docker run -d --name recipe-finder-test-${BUILD_NUMBER} -p 3001:80 ${DOCKER_IMAGE}:${DOCKER_TAG}
+                        sleep 15
+                        
+                        # Verify the application is running
+                        curl -f http://localhost:3001 || exit 1
+                        
+                        # Clean up test container
+                        docker stop recipe-finder-test-${BUILD_NUMBER}
+                        docker rm recipe-finder-test-${BUILD_NUMBER}
+                    '''
+                }
+            }
+        }
+        
+        stage('Deploy Locally') {
+            steps {
+                echo 'Deploying application locally...'
+                sh '''
+                    # Stop existing container if running
+                    docker stop recipe-finder-app || true
+                    docker rm recipe-finder-app || true
+                    
+                    # Start new container
+                    docker run -d --name recipe-finder-app -p 3000:80 ${DOCKER_IMAGE}:${DOCKER_TAG}
+                    
+                    # Wait for container to be ready
+                    sleep 15
+                    
+                    # Verify deployment
+                    curl -f http://localhost:3000 || exit 1
+                '''
+            }
+        }
+    }
+    
+    post {
+        always {
+            echo 'Cleaning up...'
+            sh 'docker image prune -f || true'
+        }
+        success {
+            echo 'Pipeline completed successfully!'
+            echo "Application is available at: http://localhost:3000"
+        }
+        failure {
+            echo 'Pipeline failed!'
+        }
+    }
+}

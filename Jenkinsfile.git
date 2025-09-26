@@ -1,0 +1,85 @@
+pipeline {
+    agent any
+    
+    environment {
+        DOCKER_IMAGE = 'recipe-finder'
+        DOCKER_TAG = "${BUILD_NUMBER}"
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                echo 'Checking out code from Git...'
+                checkout scm
+                sh 'pwd && ls -la'
+            }
+        }
+        
+        stage('Build with Docker') {
+            steps {
+                echo 'Building application with Docker...'
+                sh '''
+                    # Build the Docker image (this will handle npm install and build)
+                    docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} .
+                    
+                    # Tag as latest
+                    docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest
+                '''
+            }
+        }
+        
+        stage('Test Docker Image') {
+            steps {
+                echo 'Testing Docker image...'
+                sh '''
+                    # Run the container in test mode
+                    docker run -d --name recipe-finder-test-${BUILD_NUMBER} -p 3001:80 ${DOCKER_IMAGE}:${DOCKER_TAG}
+                    
+                    # Wait for container to start
+                    sleep 15
+                    
+                    # Test the application
+                    curl -f http://localhost:3001 || exit 1
+                    
+                    # Clean up test container
+                    docker stop recipe-finder-test-${BUILD_NUMBER}
+                    docker rm recipe-finder-test-${BUILD_NUMBER}
+                '''
+            }
+        }
+        
+        stage('Deploy Locally') {
+            steps {
+                echo 'Deploying application locally...'
+                sh '''
+                    # Stop existing container if running
+                    docker stop recipe-finder-app || true
+                    docker rm recipe-finder-app || true
+                    
+                    # Start new container
+                    docker run -d --name recipe-finder-app -p 3000:80 ${DOCKER_IMAGE}:${DOCKER_TAG}
+                    
+                    # Wait for container to be ready
+                    sleep 15
+                    
+                    # Verify deployment
+                    curl -f http://localhost:3000 || exit 1
+                '''
+            }
+        }
+    }
+    
+    post {
+        always {
+            echo 'Cleaning up...'
+            sh 'docker image prune -f || true'
+        }
+        success {
+            echo 'Pipeline completed successfully!'
+            echo "Application is available at: http://localhost:3000"
+        }
+        failure {
+            echo 'Pipeline failed!'
+        }
+    }
+}
