@@ -47,7 +47,14 @@ pipeline {
                     echo "Node.js version: $(node --version)"
                     echo "npm version: $(npm --version)"
                     
-                    # Install dependencies
+                    # Temporarily disable custom registry for Jenkins build
+                    echo "Temporarily disabling custom npm registry..."
+                    if [ -f .npmrc ]; then
+                        mv .npmrc .npmrc.backup
+                        echo "Backed up .npmrc to .npmrc.backup"
+                    fi
+                    
+                    # Install dependencies using default npm registry
                     npm ci
                 '''
             }
@@ -123,6 +130,13 @@ pipeline {
     post {
         always {
             echo 'Cleaning up...'
+            sh '''
+                # Restore .npmrc if it was backed up
+                if [ -f .npmrc.backup ]; then
+                    mv .npmrc.backup .npmrc
+                    echo "Restored .npmrc from backup"
+                fi
+            '''
         }
         success {
             echo 'Pipeline completed successfully!'
