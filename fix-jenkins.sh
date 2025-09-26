@@ -1,0 +1,41 @@
+#!/bin/bash
+
+echo "🔧 Recipe Finder - Jenkins Pipeline Fix"
+echo "======================================="
+
+echo "📋 Current Git status:"
+git status --short
+
+echo ""
+echo "🌿 Current branch:"
+git branch
+
+echo ""
+echo "📝 Jenkins Pipeline Fix Instructions:"
+echo "====================================="
+echo ""
+echo "1. Go to Jenkins: http://localhost:8080"
+echo "2. Open your job: recipe-finder-deployment"
+echo "3. Click 'Configure'"
+echo "4. In Pipeline section, choose ONE of these options:"
+echo ""
+echo "   OPTION A (Recommended - No Git):"
+echo "   - Definition: Pipeline script"
+echo "   - Script: Copy contents from Jenkinsfile.simple"
+echo ""
+echo "   OPTION B (Fix Git):"
+echo "   - Definition: Pipeline script from SCM"
+echo "   - SCM: Git"
+echo "   - Repository URL: $(pwd)"
+echo "   - Branch Specifier: */main (not */master)"
+echo "   - Script Path: Jenkinsfile.local"
+echo ""
+echo "5. Save and run the build"
+echo ""
+echo "🎯 The pipeline will:"
+echo "   ✅ Install dependencies"
+echo "   ✅ Run linting"
+echo "   ✅ Build React app"
+echo "   ✅ Build Docker image"
+echo "   ✅ Test the image"
+echo "   ✅ Deploy to http://localhost:3000"
