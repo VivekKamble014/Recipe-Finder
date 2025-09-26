@@ -14,6 +14,13 @@ pipeline {
             steps {
                 echo 'Installing Node.js and npm dependencies...'
                 sh '''
+                    # Function to source nvm
+                    source_nvm() {
+                        export NVM_DIR="$HOME/.nvm"
+                        [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+                        [ -s "$NVM_DIR/bash_completion" ] && . "$NVM_DIR/bash_completion"
+                    }
+                    
                     # Check if Node.js is available
                     if ! command -v node &> /dev/null; then
                         echo "Node.js not found. Installing using nvm..."
@@ -22,14 +29,18 @@ pipeline {
                         curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
                         
                         # Source nvm
-                        export NVM_DIR="$HOME/.nvm"
-                        [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-                        [ -s "$NVM_DIR/bash_completion" ] && . "$NVM_DIR/bash_completion"
+                        source_nvm
                         
                         # Install and use Node.js 20
                         nvm install 20
                         nvm use 20
                         nvm alias default 20
+                        
+                        # Source nvm again to ensure it's loaded
+                        source_nvm
+                    else
+                        echo "Node.js already available"
+                        source_nvm
                     fi
                     
                     # Verify installations
@@ -45,14 +56,28 @@ pipeline {
         stage('Lint Code') {
             steps {
                 echo 'Running ESLint...'
-                sh 'npm run lint'
+                sh '''
+                    # Source nvm for this stage
+                    export NVM_DIR="$HOME/.nvm"
+                    [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+                    [ -s "$NVM_DIR/bash_completion" ] && . "$NVM_DIR/bash_completion"
+                    
+                    npm run lint
+                '''
             }
         }
         
         stage('Build Application') {
             steps {
                 echo 'Building React application...'
-                sh 'npm run build'
+                sh '''
+                    # Source nvm for this stage
+                    export NVM_DIR="$HOME/.nvm"
+                    [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+                    [ -s "$NVM_DIR/bash_completion" ] && . "$NVM_DIR/bash_completion"
+                    
+                    npm run build
+                '''
             }
         }
         
@@ -60,7 +85,7 @@ pipeline {
             steps {
                 echo 'Deploying application...'
                 sh '''
-                    # Source nvm again for this stage
+                    # Source nvm for this stage
                     export NVM_DIR="$HOME/.nvm"
                     [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
                     [ -s "$NVM_DIR/bash_completion" ] && . "$NVM_DIR/bash_completion"
