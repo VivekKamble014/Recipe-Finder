@@ -1,0 +1,78 @@
+pipeline {
+    agent any
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                echo 'Using workspace files directly...'
+                sh 'pwd && ls -la'
+            }
+        }
+        
+        stage('Local Build and Deploy') {
+            steps {
+                echo 'Building and deploying locally...'
+                script {
+                    // This approach uses the host system to build and deploy
+                    sh '''
+                        # Check if we're in the right directory
+                        if [ ! -f "package.json" ]; then
+                            echo "package.json not found. Please ensure the workspace contains the project files."
+                            echo "Current directory contents:"
+                            ls -la
+                            exit 1
+                        fi
+                        
+                        # Install dependencies
+                        echo "Installing npm dependencies..."
+                        npm ci
+                        
+                        # Run linting
+                        echo "Running ESLint..."
+                        npm run lint
+                        
+                        # Build the application
+                        echo "Building React application..."
+                        npm run build
+                        
+                        # Build Docker image
+                        echo "Building Docker image..."
+                        docker build -t recipe-finder:${BUILD_NUMBER} .
+                        
+                        # Stop existing container
+                        echo "Stopping existing container..."
+                        docker stop recipe-finder-app || true
+                        docker rm recipe-finder-app || true
+                        
+                        # Start new container
+                        echo "Starting new container..."
+                        docker run -d --name recipe-finder-app -p 3000:80 recipe-finder:${BUILD_NUMBER}
+                        
+                        # Wait for container to be ready
+                        sleep 15
+                        
+                        # Verify deployment
+                        echo "Verifying deployment..."
+                        curl -f http://localhost:3000 || exit 1
+                        
+                        echo "Deployment successful!"
+                    '''
+                }
+            }
+        }
+    }
+    
+    post {
+        always {
+            echo 'Cleaning up...'
+            sh 'docker image prune -f || true'
+        }
+        success {
+            echo 'Pipeline completed successfully!'
+            echo "Application is available at: http://localhost:3000"
+        }
+        failure {
+            echo 'Pipeline failed!'
+        }
+    }
+}
