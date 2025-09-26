@@ -1,0 +1,86 @@
+pipeline {
+    agent any
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                echo 'Checking out code from Git...'
+                checkout scm
+                sh 'pwd && ls -la'
+            }
+        }
+        
+        stage('Install Dependencies') {
+            steps {
+                echo 'Installing npm dependencies...'
+                sh '''
+                    # Check if npm is available
+                    if ! command -v npm &> /dev/null; then
+                        echo "npm not found. Installing Node.js..."
+                        # Install Node.js (this might not work in all Jenkins setups)
+                        curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+                        sudo apt-get install -y nodejs
+                    fi
+                    
+                    npm ci
+                '''
+            }
+        }
+        
+        stage('Lint Code') {
+            steps {
+                echo 'Running ESLint...'
+                sh 'npm run lint'
+            }
+        }
+        
+        stage('Build Application') {
+            steps {
+                echo 'Building React application...'
+                sh 'npm run build'
+            }
+        }
+        
+        stage('Deploy with Docker') {
+            steps {
+                echo 'Deploying with Docker...'
+                sh '''
+                    # Try to use Docker if available
+                    if command -v docker &> /dev/null; then
+                        echo "Docker available, building and deploying..."
+                        docker build -t recipe-finder:${BUILD_NUMBER} .
+                        docker stop recipe-finder-app || true
+                        docker rm recipe-finder-app || true
+                        docker run -d --name recipe-finder-app -p 3000:80 recipe-finder:${BUILD_NUMBER}
+                        sleep 15
+                        curl -f http://localhost:3000 || exit 1
+                    else
+                        echo "Docker not available, using npm serve..."
+                        # Install serve globally
+                        npm install -g serve
+                        # Stop any existing serve process
+                        pkill -f "serve" || true
+                        # Start serve in background
+                        nohup serve -s dist -l 3000 > serve.log 2>&1 &
+                        sleep 10
+                        curl -f http://localhost:3000 || exit 1
+                    fi
+                '''
+            }
+        }
+    }
+    
+    post {
+        always {
+            echo 'Cleaning up...'
+            sh 'docker image prune -f || true' || true
+        }
+        success {
+            echo 'Pipeline completed successfully!'
+            echo "Application is available at: http://localhost:3000"
+        }
+        failure {
+            echo 'Pipeline failed!'
+        }
+    }
+}
