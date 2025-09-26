@@ -23,8 +23,8 @@ pipeline {
                         
                         # Source nvm
                         export NVM_DIR="$HOME/.nvm"
-                        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-                        [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+                        [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+                        [ -s "$NVM_DIR/bash_completion" ] && . "$NVM_DIR/bash_completion"
                         
                         # Install and use Node.js 20
                         nvm install 20
@@ -62,8 +62,8 @@ pipeline {
                 sh '''
                     # Source nvm again for this stage
                     export NVM_DIR="$HOME/.nvm"
-                    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-                    [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+                    [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+                    [ -s "$NVM_DIR/bash_completion" ] && . "$NVM_DIR/bash_completion"
                     
                     # Install serve locally if not available
                     if ! command -v serve &> /dev/null; then
