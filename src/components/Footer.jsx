@@ -57,6 +57,11 @@ const Footer = () => {
                   <i className="fas fa-dice me-2"></i>Random Recipe
                 </a>
               </li>
+              <li className="mb-2">
+                <Link to="/music" className="footer-link">
+                  <i className="fas fa-music me-2"></i>Music Player
+                </Link>
+              </li>
             </ul>
           </div>
 

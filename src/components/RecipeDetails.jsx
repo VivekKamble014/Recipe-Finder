@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { useFavorites } from '../contexts/FavoritesContext'
+import { useFavorites } from '../hooks/useFavorites'
 import recipeApi from '../services/recipeApi'
 
 const RecipeDetails = () => {

@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { useFavorites } from '../contexts/FavoritesContext'
+import { useFavorites } from '../hooks/useFavorites'
 
 const Navbar = () => {
   const location = useLocation()
@@ -42,6 +42,14 @@ const Navbar = () => {
                     {favorites.length}
                   </span>
                 )}
+              </Link>
+            </li>
+            <li className="nav-item">
+              <Link 
+                className={`nav-link ${location.pathname === '/music' ? 'active' : ''}`} 
+                to="/music"
+              >
+                🎵 Music
               </Link>
             </li>
           </ul>

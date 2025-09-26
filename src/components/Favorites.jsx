@@ -1,4 +1,4 @@
-import { useFavorites } from '../contexts/FavoritesContext'
+import { useFavorites } from '../hooks/useFavorites'
 import RecipeCard from './RecipeCard'
 
 const Favorites = () => {

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { useFavorites } from '../contexts/FavoritesContext'
+import { useFavorites } from '../hooks/useFavorites'
 
 const RecipeCard = ({ recipe }) => {
   const { isFavorite, toggleFavorite } = useFavorites()

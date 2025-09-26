@@ -1,14 +1,5 @@
-import { createContext, useContext, useState, useEffect } from 'react'
-
-const FavoritesContext = createContext()
-
-export const useFavorites = () => {
-  const context = useContext(FavoritesContext)
-  if (!context) {
-    throw new Error('useFavorites must be used within a FavoritesProvider')
-  }
-  return context
-}
+import { useState, useEffect } from 'react'
+import { FavoritesContext } from './FavoritesContext'
 
 export const FavoritesProvider = ({ children }) => {
   const [favorites, setFavorites] = useState([])

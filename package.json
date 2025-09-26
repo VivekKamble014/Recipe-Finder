@@ -1,8 +1,24 @@
 {
   "name": "recipe-finder",
-  "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "A modern React application for discovering and managing recipes from around the world",
+  "main": "dist/index.html",
   "type": "module",
+  "keywords": ["react", "recipes", "cooking", "food", "vite", "bootstrap"],
+  "author": "Vivek Kamble <mrvivekkamble8@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/YOUR_USERNAME/recipe-finder.git"
+  },
+  "homepage": "https://github.com/YOUR_USERNAME/recipe-finder#readme",
+  "files": [
+    "dist",
+    "src",
+    "public",
+    "package.json",
+    "README.md"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "vite build",

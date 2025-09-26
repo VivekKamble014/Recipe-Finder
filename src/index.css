@@ -218,6 +218,65 @@ body {
   50% { opacity: 0.5; }
 }
 
+/* Music Player Styles */
+.music-player-container {
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  min-height: 100vh;
+}
+
+.song-card {
+  transition: var(--transition);
+  border: none;
+  box-shadow: var(--shadow-sm);
+  border-radius: var(--border-radius-lg);
+  overflow: hidden;
+}
+
+.song-card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--shadow-lg);
+}
+
+.song-card .card-img-top {
+  transition: var(--transition);
+}
+
+.song-card:hover .card-img-top {
+  transform: scale(1.05);
+}
+
+.form-range {
+  cursor: pointer;
+}
+
+.form-range::-webkit-slider-thumb {
+  background: var(--primary);
+  border: 2px solid white;
+  box-shadow: var(--shadow-sm);
+}
+
+.form-range::-moz-range-thumb {
+  background: var(--primary);
+  border: 2px solid white;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Language Selection Buttons */
+.btn-group .btn {
+  border-radius: var(--border-radius) !important;
+  margin: 0 2px;
+}
+
+.btn-group .btn:first-child {
+  border-top-left-radius: var(--border-radius) !important;
+  border-bottom-left-radius: var(--border-radius) !important;
+}
+
+.btn-group .btn:last-child {
+  border-top-right-radius: var(--border-radius) !important;
+  border-bottom-right-radius: var(--border-radius) !important;
+}
+
 /* Enhanced Button Styles */
 .btn {
   border-radius: var(--border-radius);

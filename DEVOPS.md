@@ -102,6 +102,57 @@ npm login --registry=http://localhost:8081/repository/recipe-finder-npm/
 - Default login: admin
 - Get password: `docker exec nexus cat /nexus-data/admin.password`
 
+## 📦 Nexus Repository Setup
+
+### Step 1: Create npm Hosted Repository
+
+1. **Access Nexus UI**: http://localhost:8081
+2. **Login** with admin credentials
+3. **Navigate to**: Settings → Repository → Repositories
+4. **Click "Create repository"**
+5. **Select "npm (hosted)"**
+6. **Configure**:
+   - Name: `recipe-finder-npm-hosted`
+   - Version Policy: `Release`
+   - Write Policy: `Allow redeploy`
+   - Blob Store: `default`
+7. **Click "Create repository"**
+
+### Step 2: Update npm Group Repository
+
+1. **Click on "npm (group)"** in repository list
+2. **Add your hosted repository**:
+   - Move `recipe-finder-npm-hosted` to "Members"
+   - Keep `npm (proxy)` in the group
+3. **Save changes**
+
+### Step 3: Configure Authentication
+
+1. **Create npm user**:
+   - Go to Security → Users
+   - Click "Create user"
+   - Username: `npm-user`
+   - Password: `npm-password`
+   - Roles: `nx-npm-read`, `nx-npm-write`
+
+2. **Get auth token**:
+   ```bash
+   curl -u npm-user:npm-password -X GET "http://localhost:8081/service/rest/v1/security/user-tokens"
+   ```
+
+3. **Update .npmrc** with your auth token
+
+### Step 4: Publish Your Project
+
+```bash
+# Configure publishing
+node publish-config.js
+
+# Update package.json with your GitHub URL
+# Then publish to Nexus
+npm publish
+```
+
 ## 🔄 CI/CD Pipeline
 
 ### GitHub Actions Workflow
